@@ -114,6 +114,50 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg.String() {
+	case "enter":
+		if m.currentInput == 0 {
+			m.currentInput = 1 //siguiente input
+			m.focusInput.Blur()
+			m.breakInput.Focus()
+			return m, textinput.Blink
+		} else { //iniciar timer
+			focusMin := parseInput(m.focusInput.Value(), 25)
+			breakMin := parseInput(m.breakInput.Value(), 5)
+
+			m.focusDuration = time.Duration(focusMin) * time.Minute
+			m.breakDuration = time.Duration(breakMin) * time.Minute
+			m.timeLeft = m.focusDuration
+			m.state = stateRunning
+			m.running = true
+
+			return m, tick()
+		}
+
+	case "tab", "shift+tab" : //cambiar input
+		if m.currentInput == 0 {
+			m.currentInput = 1
+			m.focusInput.Blur()
+			m.breakInput.Focus()
+		} else {
+			m.currentInput = 0
+			m.breakInput.Blur()
+			m.focusInput.Focus()
+		}
+		return m, textinput.Blink
+	}
+
+	if m.currentInput == 0 {
+		m.focusInput, cmd = m.focusInput.Update(msg)
+	} else {
+		m.breakInput, cmd = m.breakInput.Update(msg)
+	}
+	
+	return m, cmd
+}
 
 func tick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
