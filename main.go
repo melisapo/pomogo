@@ -196,7 +196,12 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-
+func (m model) View() string {
+	if m.state == stateSetup {
+		return m.viewSetup()
+	}
+	return m.viewRunning()
+}
 
 func tick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
