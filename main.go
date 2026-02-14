@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	//"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type state int
@@ -201,6 +201,57 @@ func (m model) View() string {
 		return m.viewSetup()
 	}
 	return m.viewRunning()
+}
+
+func (m model) viewSetup() string {
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FF6B6B")).
+		MarginBottom(2).
+		Align(lipgloss.Center)
+
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#95E1D3")).
+		Bold(true)
+
+	inputStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#4ECDC4")).
+		Padding(0, 1).
+		MarginBottom(1)
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#999")).
+		MarginTop(2).
+		Italic(true)
+
+	title := titleStyle.Render(" POMODORO TIMER")
+
+	focusLabel := labelStyle.Render("Sesión de enfoque (minutos):")
+	focusInputView := inputStyle.Render(m.focusInput.View())
+
+	breakLabel := labelStyle.Render("Sesión de descanso (minutos):")
+	breakInputView := inputStyle.Render(m.breakInput.View())
+
+	help := helpStyle.Render("Tab: cambiar campo • Enter: siguiente/iniciar • Ctrl+C: salir")
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		focusLabel,
+		focusInputView,
+		breakLabel,
+		breakInputView,
+		help,
+	)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		content,
+	)
 }
 
 func tick() tea.Cmd {
