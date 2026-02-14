@@ -71,3 +71,45 @@ func initialModel() model {
 func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		}
+		if m.state == stateSetup {
+			return m.updateSetup(msg)
+		} else {
+			return m.updateRunning(msg)
+		}
+	case tickMsg:
+		if m.running && m.timeLeft > 0 {
+			m.timeLeft -= time.Second
+
+			//cambio de sesion
+			if m.timeLeft <= 0 {
+				if m.sessionType == sessionFocus {
+					m.completedSessions++
+					m.sessionType = sessionBreak
+					m.timeLeft = m.breakDuration
+				} else {
+					m.sessionType = sessionFocus
+					m.timeLeft = m.focusDuration
+				}
+			}
+
+			return m, tick()
+		}
+
+		return m, nil
+	}
+
+	return m, nil
+}
