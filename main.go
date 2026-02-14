@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -251,6 +252,97 @@ func (m model) viewSetup() string {
 		lipgloss.Center,
 		lipgloss.Center,
 		content,
+	)
+}
+
+func (m model) viewRunning() string {
+	containerStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#FF6B6B")).
+		Padding(2, 4).
+		Align(lipgloss.Center)
+
+	sessionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FFE66D")).
+		MarginBottom(1)
+
+	timerStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#4ECDC4")).
+		MarginBottom(2)
+
+	buttonStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#4ECDC4")).
+		Foreground(lipgloss.Color("#000")).
+		Padding(0, 2).
+		MarginRight(1).
+		Bold(true)
+
+	statsStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#95E1D3")).
+		MarginTop(2)
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#999")).
+		MarginTop(2).
+		Italic(true)
+
+	// Contenido
+	sessionText := " ENFOQUE"
+	emoji := ""
+	if m.sessionType == sessionBreak {
+		sessionText = " DESCANSO"
+		emoji = ""
+	}
+
+	session := sessionStyle.Render(sessionText)
+
+	minutes := int(m.timeLeft.Minutes())
+	seconds := int(m.timeLeft.Seconds()) % 60
+	timerText := fmt.Sprintf("%s %02d:%02d", emoji, minutes, seconds)
+	timer := timerStyle.Render(timerText)
+
+	// Botones
+	var playPauseBtn string
+	if m.running {
+		playPauseBtn = buttonStyle.Render(" Pausar (P)")
+	} else {
+		playPauseBtn = buttonStyle.Render(" Iniciar (P)")
+	}
+
+	resetBtn := buttonStyle.Render(" Reset (R)")
+	skipBtn := buttonStyle.Render(" Skip (S)")
+	newBtn := buttonStyle.Render(" Config (N)")
+
+	buttons := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		playPauseBtn,
+		resetBtn,
+		skipBtn,
+		newBtn,
+	)
+
+	stats := statsStyle.Render(fmt.Sprintf("Sesiones completadas: %d", m.completedSessions))
+	help := helpStyle.Render("Q: salir • Espacio: pausar/reanudar")
+
+	content := lipgloss.JoinVertical(
+		lipgloss.Center,
+		session,
+		timer,
+		buttons,
+		stats,
+		help,
+	)
+
+	box := containerStyle.Render(content)
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		box,
 	)
 }
 
