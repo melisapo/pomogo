@@ -160,6 +160,44 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "p", " ": //pausar/reanudar
+		m.running = !m.running
+		if m.running {
+			return m, tick()
+		}
+	case "r": //reset
+		if m.sessionType == sessionFocus {
+			m.timeLeft = m.focusDuration
+		} else {
+			m.timeLeft = m.breakDuration
+		}
+	case "s": //skip session
+		if m.sessionType == sessionFocus {
+			m.completedSessions++
+			m.sessionType = sessionBreak
+			m.timeLeft = m.breakDuration
+		} else {
+			m.sessionType = sessionFocus
+			m.timeLeft = m.focusDuration
+		}
+		m.running = true
+		return m, tick()
+	case "n": //nueva config
+		m.state = stateSetup
+		m.running = false
+		m.completedSessions = 0
+		m.currentInput = 0
+		m.focusInput.Focus()
+		return m, textinput.Blink
+	}
+
+	return m, nil
+}
+
+
+
 func tick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg(t)
