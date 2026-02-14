@@ -42,5 +42,27 @@ type model struct {
 	height int
 }
 
+func initialModel() model {
+	focusInput := textinput.New()
+	focusInput.Placeholder = "25"
+	focusInput.Focus()
+	focusInput.CharLimit = 3
+	focusInput.Width = 20
 
+	breakInput := textinput.New()
+	breakInput.Placeholder = "5"
+	breakInput.CharLimit = 3
+	breakInput.Width = 20
+
+	return model{
+		state:             stateSetup,
+		sessionType:       sessionFocus,
+		focusInput:        focusInput,
+		breakInput:        breakInput,
+		currentInput:      0,
+		running:           false,
+		completedSessions: 0,
+	}
+
+}
 
