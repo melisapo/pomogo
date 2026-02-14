@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	//"github.com/charmbracelet/lipgloss"
 )
 
 type state int
@@ -66,3 +68,6 @@ func initialModel() model {
 
 }
 
+func (m model) Init() tea.Cmd {
+	return textinput.Blink
+}
