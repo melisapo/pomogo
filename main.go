@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -137,7 +138,7 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tick()
 		}
 
-	case "tab", "shift+tab" : //cambiar input
+	case "tab", "shift+tab": //cambiar input
 		if m.currentInput == 0 {
 			m.currentInput = 1
 			m.focusInput.Blur()
@@ -155,7 +156,7 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	} else {
 		m.breakInput, cmd = m.breakInput.Update(msg)
 	}
-	
+
 	return m, cmd
 }
 
@@ -163,4 +164,15 @@ func tick() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
+}
+
+func parseInput(input string, defaultVal int) int {
+	if input == "" {
+		return defaultVal
+	}
+	val, err := strconv.Atoi(input)
+	if err != nil || val <= 0 {
+		return defaultVal
+	}
+	return val
 }
