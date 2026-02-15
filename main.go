@@ -166,15 +166,14 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "p", " ": //pausar/reanudar
 		m.running = !m.running
-		if m.running {
-			return m, tick()
-		}
+		
 	case "r": //reset
 		if m.sessionType == sessionFocus {
 			m.timeLeft = m.focusDuration
 		} else {
 			m.timeLeft = m.breakDuration
 		}
+		m.running = false
 	case "s": //skip session
 		if m.sessionType == sessionFocus {
 			m.completedSessions++
@@ -185,7 +184,6 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.timeLeft = m.focusDuration
 		}
 		m.running = true
-		return m, tick()
 	case "n": //nueva config
 		m.state = stateSetup
 		m.running = false
