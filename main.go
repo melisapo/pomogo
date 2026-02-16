@@ -25,6 +25,7 @@ type sessionType int
 const (
 	sessionFocus sessionType = iota
 	sessionBreak
+	sessionLongBreak
 )
 
 type tickMsg time.Time
@@ -34,13 +35,15 @@ type model struct {
 	sessionType sessionType
 
 	// Setup
-	focusInput   textinput.Model
-	breakInput   textinput.Model
-	currentInput int // 0 = focus, 1 = break
+	focusInput     textinput.Model
+	breakInput     textinput.Model
+	longBreakInput textinput.Model
+	currentInput   int // 0 = focus, 1 = break, 2 = long break
 
 	// Timer
 	focusDuration     time.Duration
 	breakDuration     time.Duration
+	longBreakDuration time.Duration
 	timeLeft          time.Duration
 	running           bool
 	completedSessions int
@@ -54,18 +57,24 @@ func initialModel() model {
 	focusInput.Placeholder = "25"
 	focusInput.Focus()
 	focusInput.CharLimit = 3
-	focusInput.Width = 30
+	focusInput.Width = 20
 
 	breakInput := textinput.New()
 	breakInput.Placeholder = "5"
 	breakInput.CharLimit = 3
-	breakInput.Width = 30
+	breakInput.Width = 20
+
+	longBreakInput := textinput.New()
+	longBreakInput.Placeholder = "15"
+	longBreakInput.CharLimit = 3
+	longBreakInput.Width = 20
 
 	return model{
 		state:             stateSetup,
 		sessionType:       sessionFocus,
 		focusInput:        focusInput,
 		breakInput:        breakInput,
+		longBreakInput:    longBreakInput,
 		currentInput:      0,
 		running:           false,
 		completedSessions: 0,
@@ -102,11 +111,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Cambiar de sesión cuando termina el tiempo
 			if m.timeLeft <= 0 {
-				if m.sessionType == sessionFocus {
+				switch m.sessionType {
+				case sessionFocus:
 					m.completedSessions++
-					m.sessionType = sessionBreak
-					m.timeLeft = m.breakDuration
-				} else {
+					if m.completedSessions%4 == 0 { //revisa si toca descanso largo
+						m.sessionType = sessionLongBreak
+						m.timeLeft = m.longBreakDuration
+					} else {
+						m.sessionType = sessionBreak
+						m.timeLeft = m.breakDuration
+					}
+				default:
 					m.sessionType = sessionFocus
 					m.timeLeft = m.focusDuration
 				}
@@ -127,19 +142,28 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "enter":
-		if m.currentInput == 0 {
+		switch m.currentInput {
+		case 0:
 			// Pasar al siguiente input
 			m.currentInput = 1
 			m.focusInput.Blur()
 			m.breakInput.Focus()
 			return m, textinput.Blink
-		} else {
+		case 1:
+			m.currentInput = 2
+			m.breakInput.Blur()
+			m.longBreakInput.Focus()
+			return m, textinput.Blink
+		default:
 			// Iniciar el timer
 			focusMin := parseInput(m.focusInput.Value(), 25)
 			breakMin := parseInput(m.breakInput.Value(), 5)
+			longBreakMin := parseInput(m.longBreakInput.Value(), 15)
 
 			m.focusDuration = time.Duration(focusMin) * time.Minute
 			m.breakDuration = time.Duration(breakMin) * time.Minute
+			m.longBreakDuration = time.Duration(longBreakMin) * time.Minute
+
 			m.timeLeft = m.focusDuration
 			m.state = stateRunning
 			m.running = true
@@ -148,22 +172,30 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "tab", "shift+tab":
-		if m.currentInput == 0 {
+		switch m.currentInput {
+		case 0:
 			m.currentInput = 1
 			m.focusInput.Blur()
 			m.breakInput.Focus()
-		} else {
-			m.currentInput = 0
+		case 1:
+			m.currentInput = 2
 			m.breakInput.Blur()
+			m.longBreakInput.Focus()
+		default:
+			m.currentInput = 0
+			m.longBreakInput.Blur()
 			m.focusInput.Focus()
 		}
 		return m, textinput.Blink
 	}
 
-	if m.currentInput == 0 {
+	switch m.currentInput {
+	case 0:
 		m.focusInput, cmd = m.focusInput.Update(msg)
-	} else {
+	case 1:
 		m.breakInput, cmd = m.breakInput.Update(msg)
+	default:
+		m.longBreakInput, cmd = m.longBreakInput.Update(msg)
 	}
 
 	return m, cmd
@@ -177,10 +209,13 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "r":
 		// Reset
-		if m.sessionType == sessionFocus {
+		switch m.sessionType {
+		case sessionFocus:
 			m.timeLeft = m.focusDuration
-		} else {
+		case sessionBreak:
 			m.timeLeft = m.breakDuration
+		default:
+			m.timeLeft = m.longBreakDuration
 		}
 		m.running = true
 
@@ -188,8 +223,13 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Skip session
 		if m.sessionType == sessionFocus {
 			m.completedSessions++
-			m.sessionType = sessionBreak
-			m.timeLeft = m.breakDuration
+			if m.completedSessions%4 == 0 {
+				m.sessionType = sessionLongBreak
+				m.timeLeft = m.longBreakDuration
+			} else {
+				m.sessionType = sessionBreak
+				m.timeLeft = m.breakDuration
+			}
 		} else {
 			m.sessionType = sessionFocus
 			m.timeLeft = m.focusDuration
@@ -238,13 +278,16 @@ func (m model) viewSetup() string {
 		MarginTop(2).
 		Italic(true)
 
-	title := titleStyle.Render(" POMODORO TIMER")
+	title := titleStyle.Render(" POMODORO TIMER")
 
 	focusLabel := labelStyle.Render("Sesión de enfoque (minutos):")
 	focusInputView := inputStyle.Render(m.focusInput.View())
 
 	breakLabel := labelStyle.Render("Sesión de descanso (minutos):")
 	breakInputView := inputStyle.Render(m.breakInput.View())
+
+	longBreakLabel := labelStyle.Render("Sesión de descanso largo (minutos):")
+	longBreakInputView := inputStyle.Render(m.longBreakInput.View())
 
 	help := helpStyle.Render("Tab: cambiar campo • Enter: siguiente/iniciar • Q: salir")
 
@@ -255,6 +298,8 @@ func (m model) viewSetup() string {
 		focusInputView,
 		breakLabel,
 		breakInputView,
+		longBreakLabel,
+		longBreakInputView,
 		help,
 	)
 
@@ -304,9 +349,13 @@ func (m model) viewRunning() string {
 	// Contenido
 	sessionText := " ENFOQUE"
 	emoji := ""
-	if m.sessionType == sessionBreak {
+	switch m.sessionType {
+	case sessionBreak:
 		sessionText = " DESCANSO"
 		emoji = ""
+	case sessionLongBreak:
+		sessionText = " DESCANSO LARGO"
+		emoji = "󱎓"
 	}
 
 	session := sessionStyle.Render(sessionText)
