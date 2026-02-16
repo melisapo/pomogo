@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// Estados de la aplicación
 type state int
 
 const (
@@ -18,6 +19,7 @@ const (
 	stateRunning
 )
 
+// Tipos de sesión
 type sessionType int
 
 const (
@@ -52,12 +54,12 @@ func initialModel() model {
 	focusInput.Placeholder = "25"
 	focusInput.Focus()
 	focusInput.CharLimit = 3
-	focusInput.Width = 20
+	focusInput.Width = 30
 
 	breakInput := textinput.New()
 	breakInput.Placeholder = "5"
 	breakInput.CharLimit = 3
-	breakInput.Width = 20
+	breakInput.Width = 30
 
 	return model{
 		state:             stateSetup,
@@ -68,7 +70,6 @@ func initialModel() model {
 		running:           false,
 		completedSessions: 0,
 	}
-
 }
 
 func (m model) Init() tea.Cmd {
@@ -76,27 +77,30 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		}
+
 		if m.state == stateSetup {
 			return m.updateSetup(msg)
 		} else {
 			return m.updateRunning(msg)
 		}
+
 	case tickMsg:
+		var cmd tea.Cmd
 		if m.running && m.timeLeft > 0 {
 			m.timeLeft -= time.Second
 
-			//cambio de sesion
+			// Cambiar de sesión cuando termina el tiempo
 			if m.timeLeft <= 0 {
 				if m.sessionType == sessionFocus {
 					m.completedSessions++
@@ -107,11 +111,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.timeLeft = m.focusDuration
 				}
 			}
-
-			return m, tick()
 		}
 
-		return m, nil
+		if m.state == stateRunning {
+			cmd = tick()
+		}
+		return m, cmd
 	}
 
 	return m, nil
@@ -123,11 +128,13 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		if m.currentInput == 0 {
-			m.currentInput = 1 //siguiente input
+			// Pasar al siguiente input
+			m.currentInput = 1
 			m.focusInput.Blur()
 			m.breakInput.Focus()
 			return m, textinput.Blink
-		} else { //iniciar timer
+		} else {
+			// Iniciar el timer
 			focusMin := parseInput(m.focusInput.Value(), 25)
 			breakMin := parseInput(m.breakInput.Value(), 5)
 
@@ -140,7 +147,7 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tick()
 		}
 
-	case "tab", "shift+tab": //cambiar input
+	case "tab", "shift+tab":
 		if m.currentInput == 0 {
 			m.currentInput = 1
 			m.focusInput.Blur()
@@ -164,17 +171,21 @@ func (m model) updateSetup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "p", " ": //pausar/reanudar
+	case "p", " ":
+		// Pausar/Reanudar
 		m.running = !m.running
-		
-	case "r": //reset
+
+	case "r":
+		// Reset
 		if m.sessionType == sessionFocus {
 			m.timeLeft = m.focusDuration
 		} else {
 			m.timeLeft = m.breakDuration
 		}
-		m.running = false
-	case "s": //skip session
+		m.running = true
+
+	case "s":
+		// Skip session
 		if m.sessionType == sessionFocus {
 			m.completedSessions++
 			m.sessionType = sessionBreak
@@ -184,7 +195,9 @@ func (m model) updateRunning(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.timeLeft = m.focusDuration
 		}
 		m.running = true
-	case "n": //nueva config
+
+	case "n":
+		// Nueva configuracion
 		m.state = stateSetup
 		m.running = false
 		m.completedSessions = 0
@@ -233,7 +246,7 @@ func (m model) viewSetup() string {
 	breakLabel := labelStyle.Render("Sesión de descanso (minutos):")
 	breakInputView := inputStyle.Render(m.breakInput.View())
 
-	help := helpStyle.Render("Tab: cambiar campo • Enter: siguiente/iniciar • Ctrl+C: salir")
+	help := helpStyle.Render("Tab: cambiar campo • Enter: siguiente/iniciar • Q: salir")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -255,6 +268,7 @@ func (m model) viewSetup() string {
 }
 
 func (m model) viewRunning() string {
+	// Estilos
 	containerStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#FF6B6B")).
@@ -289,10 +303,10 @@ func (m model) viewRunning() string {
 
 	// Contenido
 	sessionText := " ENFOQUE"
-	emoji := ""
+	emoji := ""
 	if m.sessionType == sessionBreak {
 		sessionText = " DESCANSO"
-		emoji = ""
+		emoji = ""
 	}
 
 	session := sessionStyle.Render(sessionText)
@@ -305,25 +319,23 @@ func (m model) viewRunning() string {
 	// Botones
 	var playPauseBtn string
 	if m.running {
-		playPauseBtn = buttonStyle.Render(" Pausar (P)")
+		playPauseBtn = buttonStyle.Render(" Pausar (P)")
 	} else {
-		playPauseBtn = buttonStyle.Render(" Iniciar (P)")
+		playPauseBtn = buttonStyle.Render(" Iniciar (P)")
 	}
 
-	resetBtn := buttonStyle.Render(" Reset (R)")
-	skipBtn := buttonStyle.Render(" Skip (S)")
-	newBtn := buttonStyle.Render(" Config (N)")
+	resetBtn := buttonStyle.Render("󰑓 Reset (R)")
+	skipBtn := buttonStyle.Render("󰒭 Skip (S)")
 
 	buttons := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		playPauseBtn,
 		resetBtn,
 		skipBtn,
-		newBtn,
 	)
 
 	stats := statsStyle.Render(fmt.Sprintf("Sesiones completadas: %d", m.completedSessions))
-	help := helpStyle.Render("Q: salir • Espacio: pausar/reanudar")
+	help := helpStyle.Render("Q: salir • N: nueva configuracion")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Center,
