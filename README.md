@@ -3,8 +3,8 @@
 A beautiful and minimal Pomodoro timer for your terminal, built with Go and the Charm ecosystem.
 
 <p align="center">
-  <img src="setup-view.webp" alt="setup TUI Demo" width="256" height="200">
-  <img src="running-view.webp" alt="running TUI Demo" width="256" height="200">
+  <img src="setup-view.webp" alt="setup TUI Demo" width="400" height="300">
+  <img src="running-view.webp" alt="running TUI Demo" width="400" height="300">
 </p>
 
 ## ✨ Features
